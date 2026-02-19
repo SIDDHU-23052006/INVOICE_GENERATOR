@@ -1,255 +1,291 @@
-import React, { useState } from 'react';
-import { Calendar, Save, Trash2, Plus } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Card } from '../components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Textarea } from '../components/ui/textarea';
-import { useAuth } from '../context/AuthContext';
+import React, { useEffect, useState } from "react";
+import { Trash2, Plus, Save } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Card } from "../components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { Textarea } from "../components/ui/textarea";
+import { useNavigate } from "react-router-dom";
+import { generateInvoiceNumber } from "../../utils/invoiceNumber";
 
-interface InvoiceItem {
+/* ---------------- TYPES ---------------- */
+
+interface Client {
   id: string;
-  name: string;
-  description: string;
-  quantity: number;
-  price: number;
+  companyName: string;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  cess: number;
+}
+
+interface LineItem {
+  id: string;
+  productId: string;
+  name: string;
+  qty: number;
+  price: number;
+  tax: number;
+  total: number;
+}
+
+/* ---------------- PAGE ---------------- */
+
 export const NewInvoice: React.FC = () => {
-  const { user } = useAuth();
-  const [items, setItems] = useState<InvoiceItem[]>([
-    { id: '1', name: '', description: '', quantity: 1, price: 0 }
+  const navigate = useNavigate();
+
+  const [clients, setClients] = useState<Client[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedClient, setSelectedClient] = useState("");
+  const [invoiceNumber] = useState(generateInvoiceNumber());
+
+  const [items, setItems] = useState<LineItem[]>([
+    { id: Date.now().toString(), productId: "", name: "", qty: 1, price: 0, tax: 0, total: 0 },
   ]);
-  const [issueDate, setIssueDate] = useState('2026-02-19');
-  const [dueDate, setDueDate] = useState('2026-02-26');
-  const [notes, setNotes] = useState('');
 
-  const addLineItem = () => {
-    setItems([...items, { 
-      id: Date.now().toString(), 
-      name: '', 
-      description: '', 
-      quantity: 1, 
-      price: 0 
-    }]);
+  const [notes, setNotes] = useState("");
+
+  /* ---------------- LOAD DATA ---------------- */
+
+  useEffect(() => {
+    const c = localStorage.getItem("clients");
+    const p = localStorage.getItem("items");
+    if (c) setClients(JSON.parse(c));
+    if (p) setProducts(JSON.parse(p));
+  }, []);
+
+  /* ---------------- CALCULATIONS ---------------- */
+
+  const calculate = (item: LineItem) => {
+    const subtotal = item.qty * item.price;
+    const taxAmount = subtotal * (item.tax / 100);
+    return subtotal + taxAmount;
   };
 
-  const removeLineItem = (id: string) => {
-    if (items.length > 1) {
-      setItems(items.filter(item => item.id !== id));
-    }
+  const selectProduct = (lineId: string, productId: string) => {
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
+
+    const tax = prod.cgst + prod.sgst + prod.igst + prod.cess;
+
+    setItems((prev) =>
+      prev.map((l) => {
+        if (l.id === lineId) {
+          const updated = { ...l, productId, name: prod.name, price: prod.price, tax };
+          return { ...updated, total: calculate(updated) };
+        }
+        return l;
+      })
+    );
   };
 
-  const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+  const updateQty = (id: string, qty: number) => {
+    setItems((prev) =>
+      prev.map((l) => {
+        if (l.id === id) {
+          const updated = { ...l, qty };
+          return { ...updated, total: calculate(updated) };
+        }
+        return l;
+      })
+    );
   };
 
-  const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-  const tax = subtotal * 0.1;
-  const total = subtotal + tax;
+  const addLine = () => {
+    setItems((prev) => [
+      ...prev,
+      { id: Date.now().toString(), productId: "", name: "", qty: 1, price: 0, tax: 0, total: 0 },
+    ]);
+  };
+
+  const removeLine = (id: string) => {
+    if (items.length > 1) setItems(items.filter((i) => i.id !== id));
+  };
+
+  /* ---------------- TOTALS ---------------- */
+
+  const subtotal = items.reduce((s, i) => s + i.qty * i.price, 0);
+  const taxTotal = items.reduce((s, i) => s + (i.total - i.qty * i.price), 0);
+  const grandTotal = subtotal + taxTotal;
+
+  /* ---------------- SAVE ---------------- */
+
+  const saveInvoice = () => {
+    if (!selectedClient) return alert("Please select a client");
+
+    const invoice = {
+      id: Date.now().toString(),
+      number: invoiceNumber,
+      client: clients.find((c) => c.id === selectedClient)?.companyName,
+      items,
+      subtotal,
+      tax: taxTotal,
+      total: grandTotal,
+      date: new Date().toLocaleDateString(),
+      status: "pending",
+    };
+
+    const stored = localStorage.getItem("invoices");
+    const invoices = stored ? JSON.parse(stored) : [];
+    invoices.push(invoice);
+    localStorage.setItem("invoices", JSON.stringify(invoices));
+
+    navigate("/history");
+  };
+
+  /* ---------------- UI ---------------- */
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-semibold mb-2">New Invoice</h1>
-          <p className="text-gray-600">Create and send a new invoice</p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" className="px-6">
-            Cancel
-          </Button>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white px-6 flex items-center gap-2">
-            <Save className="w-4 h-4" />
-            Save & Send
-          </Button>
-        </div>
-      </div>
+    <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Form */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Bill To & Invoice Number */}
-          <Card className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <Label>Bill To</Label>
-                <Select>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select Client" />
+      {/* LEFT SIDE */}
+      <div className="lg:col-span-2 space-y-6">
+
+        {/* HEADER */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-semibold">New Invoice</h1>
+            <p className="text-gray-500">Create GST Invoice</p>
+          </div>
+
+          <Button onClick={saveInvoice} className="bg-orange-500 hover:bg-orange-600 text-white">
+            <Save className="w-4 h-4 mr-2" />
+            Save Invoice
+          </Button>
+        </div>
+
+        {/* CLIENT + NUMBER */}
+        <Card className="p-6">
+          <div className="grid md:grid-cols-2 gap-6">
+
+            <div>
+              <Label>Client</Label>
+              <Select onValueChange={setSelectedClient}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select Client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.companyName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Invoice Number</Label>
+              <Input className="mt-2 bg-gray-100" value={invoiceNumber} readOnly />
+            </div>
+
+          </div>
+        </Card>
+
+        {/* ITEMS TABLE */}
+        <Card className="p-6">
+          <div className="grid grid-cols-12 text-sm font-medium text-gray-500 mb-3">
+            <div className="col-span-5">Product</div>
+            <div className="col-span-2 text-center">Qty</div>
+            <div className="col-span-2 text-center">Price</div>
+            <div className="col-span-2 text-center">Total</div>
+            <div className="col-span-1"></div>
+          </div>
+
+          {items.map((item) => (
+            <div key={item.id} className="grid grid-cols-12 gap-3 mb-3 items-center">
+
+              <div className="col-span-5">
+                <Select onValueChange={(v) => selectProduct(item.id, v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Product" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Client 1</SelectItem>
-                    <SelectItem value="2">Client 2</SelectItem>
+                    {products.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Invoice Number</Label>
-                <Input 
-                  value="INV-0001" 
-                  readOnly 
-                  className="mt-1 bg-gray-50"
+
+              <div className="col-span-2">
+                <Input
+                  type="number"
+                  value={item.qty}
+                  onChange={(e) => updateQty(item.id, Number(e.target.value))}
+                  className="text-center"
                 />
               </div>
-            </div>
-          </Card>
 
-          {/* Dates */}
-          <Card className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <Label>Issue Date</Label>
-                <div className="relative mt-1">
-                  <Input 
-                    type="date" 
-                    value={issueDate}
-                    onChange={(e) => setIssueDate(e.target.value)}
-                  />
-                  <Calendar className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+              <div className="col-span-2 text-center font-medium">
+                ₹{item.price}
               </div>
-              <div>
-                <Label>Due Date</Label>
-                <div className="relative mt-1">
-                  <Input 
-                    type="date" 
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
-                  <Calendar className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+
+              <div className="col-span-2 text-center font-semibold text-orange-600">
+                ₹{item.total.toFixed(2)}
+              </div>
+
+              <div className="col-span-1 text-center">
+                <Trash2 className="text-red-500 cursor-pointer" onClick={() => removeLine(item.id)} />
               </div>
             </div>
-          </Card>
+          ))}
 
-          {/* Items */}
-          <Card className="p-6">
-            <div className="mb-4">
-              <div className="grid grid-cols-12 gap-4 text-sm text-gray-600 mb-2">
-                <div className="col-span-4">Item</div>
-                <div className="col-span-2 text-center">Qty</div>
-                <div className="col-span-2 text-center">Price</div>
-                <div className="col-span-3 text-center">Total</div>
-                <div className="col-span-1"></div>
-              </div>
-            </div>
+          <Button variant="outline" onClick={addLine} className="mt-4 w-full">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Item
+          </Button>
+        </Card>
 
-            {items.map((item) => (
-              <div key={item.id} className="mb-4">
-                <div className="grid grid-cols-12 gap-4 mb-2">
-                  <div className="col-span-4">
-                    <Select 
-                      value={item.name}
-                      onValueChange={(value) => updateItem(item.id, 'name', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select or type..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="service1">Service 1</SelectItem>
-                        <SelectItem value="service2">Service 2</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2">
-                    <Input 
-                      type="number" 
-                      value={item.quantity}
-                      onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                      className="text-center"
-                      min="1"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Input 
-                      type="number" 
-                      value={item.price}
-                      onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
-                      className="text-center"
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                  <div className="col-span-3 flex items-center justify-center">
-                    <span className="font-medium">${(item.quantity * item.price).toFixed(2)}</span>
-                  </div>
-                  <div className="col-span-1 flex items-center justify-center">
-                    <button 
-                      onClick={() => removeLineItem(item.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                <div className="col-span-12">
-                  <Input 
-                    placeholder="Description"
-                    value={item.description}
-                    onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                    className="text-sm"
-                  />
-                </div>
-              </div>
-            ))}
+        {/* NOTES */}
+        <Card className="p-6">
+          <Label>Notes</Label>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Payment terms..."
+            className="mt-2"
+          />
+        </Card>
+      </div>
 
-            <Button 
-              onClick={addLineItem}
-              variant="outline" 
-              className="mt-2 flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Line Item
-            </Button>
-          </Card>
+      {/* RIGHT SUMMARY */}
+      <div className="sticky top-24 h-fit">
+        <Card className="p-6 shadow-lg border-orange-100">
 
-          {/* Notes */}
-          <Card className="p-6">
-            <Label>Notes</Label>
-            <Textarea 
-              placeholder="Payment terms, thank you note, etc."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="mt-2 min-h-24"
-            />
-          </Card>
-        </div>
+          <h3 className="text-xl font-semibold mb-4">Summary</h3>
 
-        {/* Summary Sidebar */}
-        <div className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-xl font-semibold mb-4">Summary</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between text-gray-600">
-                <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Tax (10%)</span>
-                <span>${tax.toFixed(2)}</span>
-              </div>
-              <div className="border-t pt-3 flex justify-between font-semibold text-lg">
-                <span>Total</span>
-                <span className="text-orange-500">${total.toFixed(2)}</span>
-              </div>
-            </div>
-          </Card>
+          <div className="flex justify-between mb-2">
+            <span className="text-gray-600">Subtotal</span>
+            <span>₹{subtotal.toFixed(2)}</span>
+          </div>
 
-          <Card className="p-6">
-            <div className="mb-4">
-              <h4 className="font-medium mb-2">From:</h4>
-              <p className="text-gray-600">{user?.organization?.name || 'Your Company'}</p>
-            </div>
-            <Button variant="outline" className="w-full">
-              Edit Organization Details
-            </Button>
-          </Card>
-        </div>
+          <div className="flex justify-between mb-2">
+            <span className="text-gray-600">GST</span>
+            <span>₹{taxTotal.toFixed(2)}</span>
+          </div>
+
+          <div className="border-t mt-4 pt-4 flex justify-between text-lg font-bold text-orange-600">
+            <span>Total</span>
+            <span>₹{grandTotal.toFixed(2)}</span>
+          </div>
+
+        </Card>
       </div>
     </div>
   );

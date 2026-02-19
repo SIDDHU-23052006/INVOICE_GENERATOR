@@ -1,92 +1,128 @@
-import React, { useState } from 'react';
-import { Search, Plus } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card } from '../components/ui/card';
+import React, { useEffect, useState } from "react";
+import { Search, Plus, Trash2 } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Card } from "../components/ui/card";
 
 interface Item {
   id: string;
   name: string;
+  quantity: number;
   description: string;
   price: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  cess: number;
 }
 
 export const Items: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Mock item data - empty initially
-  const items: Item[] = [];
 
-  const filteredItems = items.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [items, setItems] = useState<Item[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<Item>({
+    id: "",
+    name: "",
+    quantity: 1,
+    description: "",
+    price: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cess: 0
+  });
+
+  useEffect(() => {
+    const stored = localStorage.getItem("items");
+    if (stored) setItems(JSON.parse(stored));
+  }, []);
+
+  const saveItems = (data: Item[]) => {
+    setItems(data);
+    localStorage.setItem("items", JSON.stringify(data));
+  };
+
+  const addItem = () => {
+    if (!form.name || !form.price) return;
+    const updated = [...items, { ...form, id: Date.now().toString() }];
+    saveItems(updated);
+    setShowModal(false);
+  };
+
+  const deleteItem = (id: string) => {
+    saveItems(items.filter(i => i.id !== id));
+  };
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+
+      <div className="flex justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-semibold mb-2">Items</h1>
-          <p className="text-gray-600">Manage products and services</p>
+          <h1 className="text-3xl font-semibold">Products</h1>
+          <p className="text-gray-600">GST enabled items</p>
         </div>
-        <Button className="bg-orange-500 hover:bg-orange-600 text-white px-6 flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Item
+
+        <Button onClick={() => setShowModal(true)} className="bg-orange-500 text-white">
+          <Plus /> Add Item
         </Button>
       </div>
 
-      {/* Search */}
-      <Card className="p-6 mb-6">
-        <div className="relative">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Search items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </Card>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-      {/* Table */}
-      <Card className="overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="text-left px-6 py-4 text-sm font-medium text-gray-600">Item Name</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-gray-600">Description</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-gray-600">Price</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-gray-600">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredItems.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                  No items found.
-                </td>
-              </tr>
-            ) : (
-              filteredItems.map((item) => (
-                <tr key={item.id} className="border-b hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium">{item.name}</td>
-                  <td className="px-6 py-4 text-gray-600">{item.description}</td>
-                  <td className="px-6 py-4 font-medium">${item.price.toFixed(2)}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">Edit</Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </Card>
+        {items.map(item => {
+          const totalTax = item.cgst + item.sgst + item.igst + item.cess;
+          const totalPrice = item.price + (item.price * totalTax / 100);
+
+          return (
+            <Card key={item.id} className="p-6 hover:shadow-xl transition">
+
+              <div className="flex justify-between mb-3">
+                <h3 className="text-xl font-semibold">{item.name}</h3>
+                <Trash2 className="text-red-500 cursor-pointer" onClick={() => deleteItem(item.id)} />
+              </div>
+
+              <p className="text-gray-500 text-sm mb-4">{item.description}</p>
+
+              <div className="text-sm space-y-1">
+                <p>Qty: {item.quantity}</p>
+                <p>Base Price: ₹{item.price}</p>
+                <p>GST: {totalTax}%</p>
+                <p className="font-semibold text-orange-600">Final Price: ₹{totalPrice.toFixed(2)}</p>
+              </div>
+
+            </Card>
+          );
+        })}
+
+      </div>
+
+      {/* MODAL */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <Card className="p-8 w-[450px] space-y-3">
+
+            <h2 className="text-xl font-semibold mb-2">Add Product</h2>
+
+            <Input placeholder="Product Name" onChange={e => setForm({ ...form, name: e.target.value })}/>
+            <Input placeholder="Quantity" type="number" onChange={e => setForm({ ...form, quantity: Number(e.target.value) })}/>
+            <Input placeholder="Description" onChange={e => setForm({ ...form, description: e.target.value })}/>
+            <Input placeholder="Price ₹" type="number" onChange={e => setForm({ ...form, price: Number(e.target.value) })}/>
+
+            <h3 className="font-medium mt-3">GST Details</h3>
+            <Input placeholder="CGST %" type="number" onChange={e => setForm({ ...form, cgst: Number(e.target.value) })}/>
+            <Input placeholder="SGST %" type="number" onChange={e => setForm({ ...form, sgst: Number(e.target.value) })}/>
+            <Input placeholder="IGST %" type="number" onChange={e => setForm({ ...form, igst: Number(e.target.value) })}/>
+            <Input placeholder="CESS %" type="number" onChange={e => setForm({ ...form, cess: Number(e.target.value) })}/>
+
+            <div className="flex justify-end gap-3 pt-3">
+              <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+              <Button className="bg-orange-500 text-white" onClick={addItem}>Save</Button>
+            </div>
+
+          </Card>
+        </div>
+      )}
+
     </div>
   );
 };

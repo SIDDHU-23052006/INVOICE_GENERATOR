@@ -1,131 +1,185 @@
-import React, { useState } from 'react';
-import { Search, Plus, Mail, Phone, MapPin } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card } from '../components/ui/card';
+import React, { useEffect, useState } from "react";
+import { Search, Plus, Mail, Phone, MapPin, Pencil, Trash2 } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Card } from "../components/ui/card";
 
 interface Client {
   id: string;
-  name: string;
-  vatNumber: string;
+  companyName: string;
   email: string;
   phone: string;
-  location: string;
-  avatar: string;
+  address: string;
+  status: "Paid" | "Pending" | "Overdue";
 }
 
 export const Clients: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Mock client data
-  const clients: Client[] = [
-    {
-      id: '1',
-      name: 'minal',
-      vatNumber: 'VAT-123',
-      email: 'minal2130@gmail.com',
-      phone: '+91 7305432490',
-      location: '123 street',
-      avatar: 'MI',
-    }
-  ];
 
-  const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const [clients, setClients] = useState<Client[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<Client>({
+    id: "",
+    companyName: "",
+    email: "",
+    phone: "",
+    address: "",
+    status: "Pending",
+  });
+
+  // LOAD
+  useEffect(() => {
+    const stored = localStorage.getItem("clients");
+    if (stored) setClients(JSON.parse(stored));
+  }, []);
+
+  // SAVE
+  const saveClients = (data: Client[]) => {
+    setClients(data);
+    localStorage.setItem("clients", JSON.stringify(data));
+  };
+
+  // ADD CLIENT
+  const handleSubmit = () => {
+    if (!form.companyName || !form.email || !form.phone) return;
+
+    const newClient = { ...form, id: Date.now().toString() };
+    const updated = [...clients, newClient];
+    saveClients(updated);
+
+    setShowModal(false);
+    setForm({ id: "", companyName: "", email: "", phone: "", address: "", status: "Pending" });
+  };
+
+  // DELETE
+  const deleteClient = (id: string) => {
+    const updated = clients.filter(c => c.id !== id);
+    saveClients(updated);
+  };
+
+  const filtered = clients.filter(c =>
+    c.companyName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="p-8">
-      {/* Header */}
+
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-semibold mb-2">Clients</h1>
-          <p className="text-gray-600">Manage your client base</p>
+          <h1 className="text-3xl font-semibold">Clients</h1>
+          <p className="text-gray-600">Your business customers</p>
         </div>
-        <Button className="bg-orange-500 hover:bg-orange-600 text-white px-6 flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Client
+
+        <Button
+          onClick={() => setShowModal(true)}
+          className="bg-orange-500 hover:bg-orange-600 text-white px-6 flex gap-2"
+        >
+          <Plus /> Add Client
         </Button>
       </div>
 
-      {/* Search */}
+      {/* SEARCH */}
       <Card className="p-6 mb-6">
         <div className="relative">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-3 text-gray-400" />
           <Input
-            placeholder="Search clients..."
+            placeholder="Search company..."
+            className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
           />
         </div>
       </Card>
 
-      {/* Table */}
-      <Card className="overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="text-left px-6 py-4 text-sm font-medium text-gray-600">Client</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-gray-600">Contact</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-gray-600">Location</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-gray-600">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredClients.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                  No clients found.
-                </td>
-              </tr>
-            ) : (
-              filteredClients.map((client) => (
-                <tr key={client.id} className="border-b hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                        <span className="text-orange-600 font-medium">{client.avatar}</span>
-                      </div>
-                      <div>
-                        <p className="font-medium">{client.name}</p>
-                        <p className="text-sm text-gray-500">{client.vatNumber}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="w-4 h-4 text-gray-400" />
-                        <span>{client.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="w-4 h-4 text-gray-400" />
-                        <span>{client.phone}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      <span>{client.location}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">Edit</Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </Card>
+      {/* LIST */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        {filtered.map(client => (
+          <Card key={client.id} className="p-6 hover:shadow-xl transition">
+
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-xl font-semibold">{client.companyName}</h3>
+
+                <span className={`text-xs px-2 py-1 rounded-full
+                ${client.status === "Paid" ? "bg-green-100 text-green-600" :
+                    client.status === "Pending" ? "bg-yellow-100 text-yellow-600" :
+                      "bg-red-100 text-red-600"}`}>
+                  {client.status}
+                </span>
+              </div>
+
+              <div className="flex gap-2">
+                <Pencil className="cursor-pointer" size={18} />
+                <Trash2
+                  className="cursor-pointer text-red-500"
+                  size={18}
+                  onClick={() => deleteClient(client.id)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm text-gray-600">
+              <div className="flex gap-2"><Mail size={16}/> {client.email}</div>
+              <div className="flex gap-2"><Phone size={16}/> {client.phone}</div>
+              <div className="flex gap-2"><MapPin size={16}/> {client.address}</div>
+            </div>
+
+          </Card>
+        ))}
+
+        {clients.length === 0 && (
+          <p className="text-gray-500">No clients added yet.</p>
+        )}
+
+      </div>
+
+      {/* MODAL */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <Card className="p-8 w-[420px] space-y-4">
+
+            <h2 className="text-xl font-semibold">Add Client</h2>
+
+            <Input placeholder="Company Name"
+              value={form.companyName}
+              onChange={e => setForm({ ...form, companyName: e.target.value })}
+            />
+
+            <Input placeholder="Company Email"
+              value={form.email}
+              onChange={e => setForm({ ...form, email: e.target.value })}
+            />
+
+            <Input placeholder="Phone Number"
+              value={form.phone}
+              onChange={e => setForm({ ...form, phone: e.target.value })}
+            />
+
+            <Input placeholder="Address"
+              value={form.address}
+              onChange={e => setForm({ ...form, address: e.target.value })}
+            />
+
+            <select
+              className="border rounded-lg p-2"
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value as any })}
+            >
+              <option>Pending</option>
+              <option>Paid</option>
+              <option>Overdue</option>
+            </select>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+              <Button className="bg-orange-500 text-white" onClick={handleSubmit}>Save</Button>
+            </div>
+
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
