@@ -21,11 +21,15 @@ import {
 
 interface Invoice {
   id: string;
-  clientName: string;
-  amount: number;
+  number: string;
+  client: string;
+  clientId: string;
+  total: number;
   status: "paid" | "pending";
-  date: string;
+  issueDate: string;
+  dueDate: string;
 }
+
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -36,13 +40,27 @@ export const Dashboard: React.FC = () => {
 
   // LOAD INVOICES
   useEffect(() => {
+
+  const loadInvoices = () => {
     const stored = localStorage.getItem("invoices");
-    if (stored) {
-      const parsed: Invoice[] = JSON.parse(stored);
-      setInvoices(parsed);
-      generateChart(parsed);
-    }
-  }, []);
+    if (!stored) return;
+
+    const parsed: Invoice[] = JSON.parse(stored);
+    setInvoices(parsed);
+    generateChart(parsed);
+  };
+
+  loadInvoices();
+
+  // realtime refresh when invoices change
+  window.addEventListener("storage", loadInvoices);
+
+  return () => {
+    window.removeEventListener("storage", loadInvoices);
+  };
+
+}, []);
+
 
   // GENERATE MONTHLY REVENUE
   const generateChart = (data: Invoice[]) => {
@@ -53,9 +71,9 @@ export const Dashboard: React.FC = () => {
 
     data.forEach(inv => {
       if (inv.status === "paid") {
-        const d = new Date(inv.date);
+        const d = new Date(inv.issueDate);
         const month = months[d.getMonth()];
-        revenueMap[month] += Number(inv.amount);
+        revenueMap[month] += Number(inv.total);
       }
     });
 
@@ -70,7 +88,7 @@ export const Dashboard: React.FC = () => {
   // CALCULATIONS
   const totalRevenue = invoices
     .filter(i => i.status === "paid")
-    .reduce((sum, i) => sum + Number(i.amount), 0);
+    .reduce((sum, i) => sum + Number(i.total), 0);
 
   const paidInvoices = invoices.filter(i => i.status === "paid").length;
   const pendingInvoices = invoices.filter(i => i.status === "pending").length;
@@ -137,7 +155,7 @@ export const Dashboard: React.FC = () => {
 
         <StatCard
           title="Clients"
-          value={[...new Set(invoices.map(i => i.clientName))].length}
+          value={[...new Set(invoices.map(i => i.client))].length}
           subtitle="Active clients"
           icon={UsersIcon}
           color="text-blue-500"
@@ -184,12 +202,12 @@ export const Dashboard: React.FC = () => {
                 className="flex items-center justify-between border-b pb-3"
               >
                 <div>
-                  <p className="font-medium">{inv.clientName}</p>
-                  <p className="text-sm text-gray-500">{inv.date}</p>
+                  <p className="font-medium">{inv.client}</p>
+<p className="text-sm text-gray-500">{inv.issueDate}</p>
                 </div>
 
                 <div className="text-right">
-                  <p className="font-semibold">{inv.amount}</p>
+                  <p className="font-semibold">₹{inv.total.toFixed(2)}</p>
                   <span className={`text-xs px-2 py-1 rounded-full 
                     ${inv.status === "paid"
                       ? "bg-green-100 text-green-600"

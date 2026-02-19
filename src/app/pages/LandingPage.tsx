@@ -50,7 +50,7 @@ export const LandingPage: React.FC = () => {
       <Package className="w-6 h-6 text-white" />
     </div>
     <span className="text-xl font-bold tracking-tight">
-      Invoicer
+      Invoice Creator
     </span>
   </div>
 

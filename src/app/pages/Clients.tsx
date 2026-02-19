@@ -10,7 +10,6 @@ interface Client {
   email: string;
   phone: string;
   address: string;
-  status: "Paid" | "Pending" | "Overdue";
 }
 
 export const Clients: React.FC = () => {
@@ -19,13 +18,12 @@ export const Clients: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<Client>({
-    id: "",
-    companyName: "",
-    email: "",
-    phone: "",
-    address: "",
-    status: "Pending",
-  });
+  id: "",
+  companyName: "",
+  email: "",
+  phone: "",
+  address: "",
+});
 
   // LOAD
   useEffect(() => {
@@ -48,7 +46,7 @@ export const Clients: React.FC = () => {
     saveClients(updated);
 
     setShowModal(false);
-    setForm({ id: "", companyName: "", email: "", phone: "", address: "", status: "Pending" });
+    setForm({ id: "", companyName: "", email: "", phone: "", address: ""});
   };
 
   // DELETE
@@ -60,6 +58,18 @@ export const Clients: React.FC = () => {
   const filtered = clients.filter(c =>
     c.companyName.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const getClientStatus = (clientId:string) => {
+  const stored = localStorage.getItem("invoices");
+  if(!stored) return "Pending";
+
+  const invoices = JSON.parse(stored).filter((i:any)=>i.clientId===clientId);
+
+  if(invoices.length===0) return "Pending";
+
+  const unpaid = invoices.some((i:any)=>i.status==="pending");
+
+  return unpaid ? "Pending" : "Paid";
+};
 
   return (
     <div className="space-y-6">
@@ -102,12 +112,17 @@ export const Clients: React.FC = () => {
               <div>
                 <h3 className="text-xl font-semibold">{client.companyName}</h3>
 
-                <span className={`text-xs px-2 py-1 rounded-full
-                ${client.status === "Paid" ? "bg-green-100 text-green-600" :
-                    client.status === "Pending" ? "bg-yellow-100 text-yellow-600" :
-                      "bg-red-100 text-red-600"}`}>
-                  {client.status}
-                </span>
+                <span
+  className={`text-xs px-2 py-1 rounded-full font-medium
+  ${
+    getClientStatus(client.id) === "Paid"
+      ? "bg-green-100 text-green-600"
+      : "bg-yellow-100 text-yellow-600"
+  }`}
+>
+  {getClientStatus(client.id)}
+</span>
+
               </div>
 
               <div className="flex gap-2">
@@ -162,15 +177,6 @@ export const Clients: React.FC = () => {
               onChange={e => setForm({ ...form, address: e.target.value })}
             />
 
-            <select
-              className="border rounded-lg p-2"
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value as any })}
-            >
-              <option>Pending</option>
-              <option>Paid</option>
-              <option>Overdue</option>
-            </select>
 
             <div className="flex justify-end gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>

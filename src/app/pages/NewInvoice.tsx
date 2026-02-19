@@ -129,18 +129,28 @@ export const NewInvoice: React.FC = () => {
   const saveInvoice = () => {
     if (!selectedClient) return alert("Select a client");
 
-    const invoice = {
-      id: Date.now().toString(),
-      number: invoiceNumber,
-      client: clients.find((c) => c.id === selectedClient)?.companyName,
-      items,
-      subtotal,
-      tax: taxTotal,
-      total: grandTotal,
-      issueDate,
-      dueDate,
-      status: "pending",
-    };
+    const clientObj = clients.find(c => c.id === selectedClient);
+
+const invoice = {
+  id: Date.now().toString(),
+  number: invoiceNumber,
+
+  clientId: clientObj?.id,          // NEW
+  clientName: clientObj?.companyName,
+
+  items,
+  subtotal,
+  tax: taxTotal,
+  total: grandTotal,
+
+  issueDate,
+  dueDate,
+
+  createdAt: new Date().toISOString(),  // NEW (important for charts)
+
+  status: "pending"
+};
+
 
     const stored = localStorage.getItem("invoices");
     const invoices = stored ? JSON.parse(stored) : [];
