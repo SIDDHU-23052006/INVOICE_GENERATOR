@@ -39,7 +39,7 @@ export const Settings: React.FC = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-semibold mb-2">Settings</h1>

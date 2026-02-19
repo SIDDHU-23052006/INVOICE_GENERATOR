@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Trash2, Plus, Save } from "lucide-react";
+import { Trash2, Plus, Save, CalendarDays } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -15,7 +15,7 @@ import { Textarea } from "../components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { generateInvoiceNumber } from "../../utils/invoiceNumber";
 
-/* ---------------- TYPES ---------------- */
+/* ---------- TYPES ---------- */
 
 interface Client {
   id: string;
@@ -42,7 +42,7 @@ interface LineItem {
   total: number;
 }
 
-/* ---------------- PAGE ---------------- */
+/* ---------- PAGE ---------- */
 
 export const NewInvoice: React.FC = () => {
   const navigate = useNavigate();
@@ -52,13 +52,16 @@ export const NewInvoice: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState("");
   const [invoiceNumber] = useState(generateInvoiceNumber());
 
+  const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0,10));
+  const [dueDate, setDueDate] = useState("");
+
   const [items, setItems] = useState<LineItem[]>([
     { id: Date.now().toString(), productId: "", name: "", qty: 1, price: 0, tax: 0, total: 0 },
   ]);
 
   const [notes, setNotes] = useState("");
 
-  /* ---------------- LOAD DATA ---------------- */
+  /* ---------- LOAD ---------- */
 
   useEffect(() => {
     const c = localStorage.getItem("clients");
@@ -67,7 +70,7 @@ export const NewInvoice: React.FC = () => {
     if (p) setProducts(JSON.parse(p));
   }, []);
 
-  /* ---------------- CALCULATIONS ---------------- */
+  /* ---------- CALCULATIONS ---------- */
 
   const calculate = (item: LineItem) => {
     const subtotal = item.qty * item.price;
@@ -115,16 +118,16 @@ export const NewInvoice: React.FC = () => {
     if (items.length > 1) setItems(items.filter((i) => i.id !== id));
   };
 
-  /* ---------------- TOTALS ---------------- */
+  /* ---------- TOTALS ---------- */
 
   const subtotal = items.reduce((s, i) => s + i.qty * i.price, 0);
   const taxTotal = items.reduce((s, i) => s + (i.total - i.qty * i.price), 0);
   const grandTotal = subtotal + taxTotal;
 
-  /* ---------------- SAVE ---------------- */
+  /* ---------- SAVE ---------- */
 
   const saveInvoice = () => {
-    if (!selectedClient) return alert("Please select a client");
+    if (!selectedClient) return alert("Select a client");
 
     const invoice = {
       id: Date.now().toString(),
@@ -134,7 +137,8 @@ export const NewInvoice: React.FC = () => {
       subtotal,
       tax: taxTotal,
       total: grandTotal,
-      date: new Date().toLocaleDateString(),
+      issueDate,
+      dueDate,
       status: "pending",
     };
 
@@ -146,146 +150,186 @@ export const NewInvoice: React.FC = () => {
     navigate("/history");
   };
 
-  /* ---------------- UI ---------------- */
+  /* ---------- UI ---------- */
 
   return (
-    <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="p-8">
 
-      {/* LEFT SIDE */}
-      <div className="lg:col-span-2 space-y-6">
-
-        {/* HEADER */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-semibold">New Invoice</h1>
-            <p className="text-gray-500">Create GST Invoice</p>
-          </div>
-
-          <Button onClick={saveInvoice} className="bg-orange-500 hover:bg-orange-600 text-white">
-            <Save className="w-4 h-4 mr-2" />
-            Save Invoice
-          </Button>
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-semibold">New Invoice</h1>
+          <p className="text-gray-500">Create and send a new invoice</p>
         </div>
 
-        {/* CLIENT + NUMBER */}
-        <Card className="p-6">
-          <div className="grid md:grid-cols-2 gap-6">
+        <div className="flex gap-3">
+          <Button variant="outline">Cancel</Button>
+          <Button onClick={saveInvoice} className="bg-orange-500 hover:bg-orange-600 text-white">
+            <Save className="w-4 h-4 mr-2"/>
+            Save & Send
+          </Button>
+        </div>
+      </div>
 
-            <div>
-              <Label>Client</Label>
-              <Select onValueChange={setSelectedClient}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select Client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.companyName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            <div>
-              <Label>Invoice Number</Label>
-              <Input className="mt-2 bg-gray-100" value={invoiceNumber} readOnly />
-            </div>
+        {/* LEFT CONTENT */}
+        <div className="lg:col-span-2 space-y-6">
 
-          </div>
-        </Card>
+          {/* BILL TO */}
+          <Card className="p-6">
+            <div className="grid md:grid-cols-2 gap-6">
 
-        {/* ITEMS TABLE */}
-        <Card className="p-6">
-          <div className="grid grid-cols-12 text-sm font-medium text-gray-500 mb-3">
-            <div className="col-span-5">Product</div>
-            <div className="col-span-2 text-center">Qty</div>
-            <div className="col-span-2 text-center">Price</div>
-            <div className="col-span-2 text-center">Total</div>
-            <div className="col-span-1"></div>
-          </div>
-
-          {items.map((item) => (
-            <div key={item.id} className="grid grid-cols-12 gap-3 mb-3 items-center">
-
-              <div className="col-span-5">
-                <Select onValueChange={(v) => selectProduct(item.id, v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Product" />
+              <div>
+                <Label>Bill To</Label>
+                <Select onValueChange={setSelectedClient}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select Client" />
                   </SelectTrigger>
                   <SelectContent>
-                    {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
+                    {clients.map(c=>(
+                      <SelectItem key={c.id} value={c.id}>{c.companyName}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="col-span-2">
-                <Input
-                  type="number"
-                  value={item.qty}
-                  onChange={(e) => updateQty(item.id, Number(e.target.value))}
-                  className="text-center"
-                />
+              <div>
+                <Label>Invoice Number</Label>
+                <Input className="mt-2 bg-gray-100" value={invoiceNumber} readOnly/>
               </div>
 
-              <div className="col-span-2 text-center font-medium">
-                ₹{item.price}
-              </div>
-
-              <div className="col-span-2 text-center font-semibold text-orange-600">
-                ₹{item.total.toFixed(2)}
-              </div>
-
-              <div className="col-span-1 text-center">
-                <Trash2 className="text-red-500 cursor-pointer" onClick={() => removeLine(item.id)} />
-              </div>
             </div>
-          ))}
+          </Card>
 
-          <Button variant="outline" onClick={addLine} className="mt-4 w-full">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Item
-          </Button>
-        </Card>
+          {/* DATES */}
+<Card className="p-6">
+  <div className="grid md:grid-cols-2 gap-6">
 
-        {/* NOTES */}
-        <Card className="p-6">
-          <Label>Notes</Label>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Payment terms..."
-            className="mt-2"
-          />
-        </Card>
+    {/* ISSUE DATE */}
+    <div>
+      <Label>Issue Date</Label>
+      <div className="relative mt-2">
+
+        <Input
+          type="date"
+          value={issueDate}
+          onChange={(e)=>setIssueDate(e.target.value)}
+          className="pr-12"
+        />
+
+        <CalendarDays className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+
       </div>
+    </div>
 
-      {/* RIGHT SUMMARY */}
-      <div className="sticky top-24 h-fit">
-        <Card className="p-6 shadow-lg border-orange-100">
+    {/* DUE DATE */}
+    <div>
+      <Label>Due Date</Label>
+      <div className="relative mt-2">
 
-          <h3 className="text-xl font-semibold mb-4">Summary</h3>
+        <Input
+          type="date"
+          value={dueDate}
+          onChange={(e)=>setDueDate(e.target.value)}
+          className="pr-12"
+        />
 
-          <div className="flex justify-between mb-2">
-            <span className="text-gray-600">Subtotal</span>
-            <span>₹{subtotal.toFixed(2)}</span>
-          </div>
+        <CalendarDays className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
 
-          <div className="flex justify-between mb-2">
-            <span className="text-gray-600">GST</span>
-            <span>₹{taxTotal.toFixed(2)}</span>
-          </div>
+      </div>
+    </div>
 
-          <div className="border-t mt-4 pt-4 flex justify-between text-lg font-bold text-orange-600">
-            <span>Total</span>
-            <span>₹{grandTotal.toFixed(2)}</span>
-          </div>
+  </div>
+</Card>
 
-        </Card>
+
+          {/* ITEMS */}
+          <Card className="p-6">
+
+            <div className="grid grid-cols-12 text-sm text-gray-500 mb-4">
+              <div className="col-span-5">Item</div>
+              <div className="col-span-2 text-center">Qty</div>
+              <div className="col-span-2 text-center">Price</div>
+              <div className="col-span-2 text-center">Total</div>
+              <div className="col-span-1"></div>
+            </div>
+
+            {items.map(item=>(
+              <div key={item.id} className="grid grid-cols-12 gap-3 mb-4 items-center">
+
+                <div className="col-span-5">
+                  <Select onValueChange={(v)=>selectProduct(item.id,v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select or type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map(p=>(
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-2">
+                  <Input type="number" value={item.qty}
+                    onChange={e=>updateQty(item.id,Number(e.target.value))}
+                    className="text-center"/>
+                </div>
+
+                <div className="col-span-2 text-center font-medium">
+                  ₹{item.price}
+                </div>
+
+                <div className="col-span-2 text-center font-semibold text-orange-600">
+                  ₹{item.total.toFixed(2)}
+                </div>
+
+                <div className="col-span-1 text-center">
+                  <Trash2 className="text-red-500 cursor-pointer" onClick={()=>removeLine(item.id)}/>
+                </div>
+
+              </div>
+            ))}
+
+            <Button variant="outline" onClick={addLine} className="w-full">
+              <Plus className="w-4 h-4 mr-2"/>
+              Add Line Item
+            </Button>
+
+          </Card>
+
+          {/* NOTES */}
+          <Card className="p-6">
+            <Label>Notes</Label>
+            <Textarea className="mt-2" placeholder="Payment terms, thank you note, etc." value={notes} onChange={e=>setNotes(e.target.value)}/>
+          </Card>
+
+        </div>
+
+        {/* RIGHT SUMMARY */}
+        <div className="space-y-6">
+
+          <Card className="p-6">
+            <h3 className="text-xl font-semibold mb-4">Summary</h3>
+
+            <div className="flex justify-between mb-2">
+              <span className="text-gray-600">Subtotal</span>
+              <span>₹{subtotal.toFixed(2)}</span>
+            </div>
+
+            <div className="flex justify-between mb-2">
+              <span className="text-gray-600">Tax</span>
+              <span>₹{taxTotal.toFixed(2)}</span>
+            </div>
+
+            <div className="border-t mt-4 pt-4 flex justify-between font-bold text-lg text-orange-600">
+              <span>Total</span>
+              <span>₹{grandTotal.toFixed(2)}</span>
+            </div>
+          </Card>
+
+        </div>
       </div>
     </div>
   );

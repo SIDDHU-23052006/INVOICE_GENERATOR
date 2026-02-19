@@ -12,7 +12,7 @@ useEffect(()=>{
 },[]);
 
 return(
-<div className="p-8">
+<div className="space-y-6">
 
 <h1 className="text-3xl font-semibold mb-6">Invoice History</h1>
 

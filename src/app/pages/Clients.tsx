@@ -62,7 +62,7 @@ export const Clients: React.FC = () => {
   );
 
   return (
-    <div className="p-8">
+    <div className="space-y-6">
 
       {/* HEADER */}
       <div className="flex items-center justify-between mb-8">

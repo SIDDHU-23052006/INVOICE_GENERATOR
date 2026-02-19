@@ -2,7 +2,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from './components/ui/sonner';
-import { Layout } from './components/Layout';
+
+/* Pages */
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
@@ -14,23 +15,32 @@ import { History } from './pages/History';
 import { Orders } from './pages/Orders';
 import { Settings } from './pages/Settings';
 
-// Protected Route Component
+/* NEW LAYOUT */
+import { DashboardLayout } from './components/layout/DashboardLayout';
+
+/* ---------------- PROTECTED ROUTE ---------------- */
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 };
 
-// Public Route Component (redirect to dashboard if already logged in)
+/* ---------------- PUBLIC ROUTE ---------------- */
+
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" />;
 };
 
+/* ---------------- ROUTES ---------------- */
+
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public Routes */}
+
+      {/* PUBLIC */}
       <Route path="/" element={<LandingPage />} />
+
       <Route
         path="/login"
         element={
@@ -39,6 +49,7 @@ function AppRoutes() {
           </PublicRoute>
         }
       />
+
       <Route
         path="/signup"
         element={
@@ -48,83 +59,93 @@ function AppRoutes() {
         }
       />
 
-      {/* Protected Routes */}
+      {/* PROTECTED PAGES WITH COLLAPSIBLE SIDEBAR */}
+
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Layout>
+            <DashboardLayout>
               <Dashboard />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/new-invoice"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <NewInvoice />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/clients"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Clients />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/items"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Items />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/history"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <History />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/orders"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Orders />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Settings />
-            </Layout>
+            </DashboardLayout>
           </ProtectedRoute>
         }
       />
 
-      {/* Catch all - redirect to home */}
+      <Route
+        path="/new-invoice"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <NewInvoice />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/clients"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Clients />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/items"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Items />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <History />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/orders"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Orders />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Settings />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* FALLBACK */}
       <Route path="*" element={<Navigate to="/" />} />
+
     </Routes>
   );
 }
+
+/* ---------------- APP ---------------- */
 
 export default function App() {
   return (

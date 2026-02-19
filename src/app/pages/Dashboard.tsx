@@ -104,7 +104,7 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-8">
+    <div className="space-y-6">
 
       {/* HEADER */}
       <div className="mb-10">
@@ -119,7 +119,7 @@ export const Dashboard: React.FC = () => {
 
         <StatCard
           title="Total Revenue"
-          value={`$${totalRevenue}`}
+          value={`${totalRevenue}`}
           subtitle="From paid invoices"
           icon={IndianRupeeIcon}
           color="text-orange-500"
@@ -189,7 +189,7 @@ export const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="text-right">
-                  <p className="font-semibold">${inv.amount}</p>
+                  <p className="font-semibold">{inv.amount}</p>
                   <span className={`text-xs px-2 py-1 rounded-full 
                     ${inv.status === "paid"
                       ? "bg-green-100 text-green-600"
